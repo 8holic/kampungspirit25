@@ -97,7 +97,7 @@
       document.querySelector('#userIDDisplay span').textContent = userID;
 
       try {
-        const userDocRef = doc(db, "kampungspirit25 ", userID);
+        const userDocRef = doc(db, "kampungspirit25", userID);
         const userDocSnap = await getDoc(userDocRef);
 
         if (!userDocSnap.exists()) {
