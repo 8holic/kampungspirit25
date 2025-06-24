@@ -5,9 +5,11 @@
   <title>Treasure Hunt Dashboard</title>
   <style>
     body { font-family: Arial, sans-serif; max-width: 600px; margin: 2rem auto; }
-    .hint { margin: 1em 0; }
-    .complete { text-decoration: line-through; color: gray; }
-    .visit-btn { margin-left: 1rem; }
+    .hint { margin: 2em 0; border: 1px solid #ddd; padding: 1em; border-radius: 6px; display: flex; align-items: center; }
+    .hint.complete { opacity: 0.6; }
+    .hint img { width: 100px; height: 100px; object-fit: cover; margin-right: 1em; border-radius: 4px; }
+    .hint-content { flex: 1; }
+    .visit-btn { margin-left: 1em; padding: 0.5em 1em; }
   </style>
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/11.9.1/firebase-app.js";
@@ -27,81 +29,101 @@
     const db = getFirestore(app);
 
     window.addEventListener('DOMContentLoaded', async () => {
+      // --- Fetch or redirect if no userID ---
       const params = new URLSearchParams(window.location.search);
-      let userID = params.get('userID') || localStorage.getItem('huntUserID');
-
+      const userID = params.get('userID') || localStorage.getItem('huntUserID');
       if (!userID) {
         alert('No user ID found. Please register first.');
         window.location.href = 'index.html';
         return;
       }
-
       localStorage.setItem('huntUserID', userID);
       document.querySelector('#userIDDisplay span').textContent = userID;
 
-      try {
-        const userDocRef = doc(db, "kampungspirit25", userID);
-        const userDocSnap = await getDoc(userDocRef);
+      // --- Load userData ---
+      const userDocRef = doc(db, "kampungspirit25", userID);
+      const userSnap = await getDoc(userDocRef);
+      if (!userSnap.exists()) {
+        alert('User data not found.');
+        return;
+      }
+      const userData = userSnap.data();
 
-        if (!userDocSnap.exists()) {
-          alert('User data not found.');
-          return;
-        }
+      // --- Define each station (you can swap in real image URLs) ---
+      const hints = [
+        {
+          key: 'station1',
+          text: '🔍 Hint 1: [describe station 1]',
+          imageUrl: 'images/station1.jpg'
+        },
+        {
+          key: 'station2',
+          text: '🔍 Hint 2: [describe station 2]',
+          imageUrl: 'images/station2.jpg'
+        },
+        {
+          key: 'station3',
+          text: '🔍 Hint 3: [describe station 3]',
+          imageUrl: 'images/station3.jpg'
+        },
+        {
+          key: 'station4',
+          text: '🔍 Hint 4: [describe station 4]',
+          imageUrl: 'images/station4.jpg'
+        },
+      ];
 
-        const userData = userDocSnap.data();
+      // --- Render all hints ---
+      const container = document.getElementById('hintsContainer');
+      container.innerHTML = '';
+      hints.forEach(({ key, text, imageUrl }) => {
+        const done = !!userData.stationsCompleted?.[key];
 
-        const hints = [
-          { id: 'hint1', key: 'station1', text: '🔍 Hint 1: [describe station 1]' },
-          { id: 'hint2', key: 'station2', text: '🔍 Hint 2: [describe station 2]' },
-          { id: 'hint3', key: 'station3', text: '🔍 Hint 3: [describe station 3]' },
-          { id: 'hint4', key: 'station4', text: '🔍 Hint 4: [describe station 4]' },
-        ];
+        const wrapper = document.createElement('div');
+        wrapper.className = 'hint' + (done ? ' complete' : '');
+        wrapper.dataset.key = key;
 
-        const container = document.getElementById('hintsContainer');
-        container.innerHTML = '';
+        const img = document.createElement('img');
+        img.src = imageUrl;
+        img.alt = key;
+        wrapper.appendChild(img);
 
-        hints.forEach(({ id, key, text }) => {
-          const hintElem = document.createElement('div');
-          hintElem.className = 'hint';
-          hintElem.id = id;
-          hintElem.dataset.key = key;
-          hintElem.textContent = text;
+        const content = document.createElement('div');
+        content.className = 'hint-content';
+        content.textContent = text;
+        wrapper.appendChild(content);
 
-          const btn = document.createElement('button');
-          btn.className = 'visit-btn';
-          btn.textContent = 'I Visited';
+        const btn = document.createElement('button');
+        btn.className = 'visit-btn';
+        btn.textContent = done ? 'Undo Visit' : 'I Visited';
+        wrapper.appendChild(btn);
 
-          if (userData.stationsCompleted?.[key]) {
-            hintElem.classList.add('complete');
-            btn.disabled = true;
-            btn.textContent = 'Visited';
+        btn.addEventListener('click', async () => {
+          const newState = !wrapper.classList.contains('complete');
+          const action = newState ? 'mark as visited' : 'undo visit';
+          if (!confirm(`Are you sure you want to ${action}?`)) return;
+
+          btn.disabled = true;
+          btn.textContent = newState ? 'Saving…' : 'Reverting…';
+
+          try {
+            // update firestore
+            await updateDoc(userDocRef, {
+              [`stationsCompleted.${key}`]: newState
+            });
+            // update UI
+            wrapper.classList.toggle('complete', newState);
+            btn.textContent = newState ? 'Undo Visit' : 'I Visited';
+          } catch (err) {
+            console.error('Update failed', err);
+            btn.textContent = newState ? 'I Visited' : 'Undo Visit';
+          } finally {
+            btn.disabled = false;
           }
-
-          btn.addEventListener('click', async () => {
-            btn.disabled = true;
-            btn.textContent = 'Marking…';
-
-            try {
-              await updateDoc(userDocRef, {
-                [`stationsCompleted.${key}`]: true
-              });
-              hintElem.classList.add('complete');
-              btn.textContent = 'Visited';
-            } catch (e) {
-              console.error('Failed to mark visited', e);
-              btn.disabled = false;
-              btn.textContent = 'I Visited';
-            }
-          });
-
-          hintElem.appendChild(btn);
-          container.appendChild(hintElem);
         });
 
-      } catch (error) {
-        console.error('Error fetching user data:', error);
-        alert('Failed to load your status. Please try again.');
-      }
+        container.appendChild(wrapper);
+      });
     });
   </script>
 </head>
@@ -109,10 +131,12 @@
   <h1>Heartland Treasure Hunt</h1>
 
   <p id="userIDDisplay"><strong>Your ID:</strong> <span></span></p>
-  <button onclick="navigator.clipboard.writeText(window.location.href)">Copy Your Resume Link</button>
+  <button onclick="navigator.clipboard.writeText(window.location.href)">
+    Copy Your Resume Link
+  </button>
 
   <div id="hintsContainer">
-    <!-- Hints with visit buttons will be rendered here -->
+    <!-- populated dynamically -->
   </div>
 </body>
 </html>
