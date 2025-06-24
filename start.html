@@ -3,11 +3,11 @@
 <head>
   <meta charset="UTF-8" />
   <title>Treasure Hunt Dashboard</title>
-  <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
   <style>
     body { font-family: Arial, sans-serif; max-width: 600px; margin: 2rem auto; }
     .hint { margin: 1em 0; }
     .complete { text-decoration: line-through; color: gray; }
+    .visit-btn { margin-left: 1rem; }
   </style>
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/11.9.1/firebase-app.js";
@@ -25,63 +25,6 @@
 
     const app = initializeApp(firebaseConfig);
     const db = getFirestore(app);
-
-    let html5QrCode;
-    let scanning = false;
-
-    window.startScan = async function () {
-      if (scanning) return;
-      scanning = true;
-
-      const qrRegionId = "reader";
-      html5QrCode = new Html5Qrcode(qrRegionId);
-
-      await html5QrCode.start(
-        { facingMode: "environment" },
-        { fps: 10, qrbox: 250 },
-        async (decodedText) => {
-          try {
-            const url = new URL(decodedText);
-            const station = url.searchParams.get("station");
-            const storedUserID = localStorage.getItem("huntUserID");
-
-            if (!station || !storedUserID) {
-              alert("Invalid QR code or missing user ID.");
-              return;
-            }
-
-            const userDocRef = doc(db, "kampungspirit25", storedUserID);
-            const userDocSnap = await getDoc(userDocRef);
-            if (!userDocSnap.exists()) {
-              alert("User not found.");
-              return;
-            }
-
-            await updateDoc(userDocRef, {
-              [`stationsCompleted.${station}`]: true
-            });
-          alert(`✅ ${station} marked as completed! Reloading...`);
-          window.location.href = `start.html?userID=${storedUserID}`;
-          } catch (err) {
-            console.error("QR scan error:", err);
-            alert("Failed to process QR code.");
-          } finally {
-            stopScan();
-          }
-        },
-        (errorMessage) => {
-          // Ignore scan errors
-        }
-      );
-    };
-
-    window.stopScan = function () {
-      if (!html5QrCode) return;
-      html5QrCode.stop().then(() => {
-        html5QrCode.clear();
-        scanning = false;
-      });
-    };
 
     window.addEventListener('DOMContentLoaded', async () => {
       const params = new URLSearchParams(window.location.search);
@@ -108,22 +51,51 @@
         const userData = userDocSnap.data();
 
         const hints = [
-          { id: 'hint1', key: 'station1' },
-          { id: 'hint2', key: 'station2' },
-          { id: 'hint3', key: 'station3' },
-          { id: 'hint4', key: 'station4' },
+          { id: 'hint1', key: 'station1', text: '🔍 Hint 1: [describe station 1]' },
+          { id: 'hint2', key: 'station2', text: '🔍 Hint 2: [describe station 2]' },
+          { id: 'hint3', key: 'station3', text: '🔍 Hint 3: [describe station 3]' },
+          { id: 'hint4', key: 'station4', text: '🔍 Hint 4: [describe station 4]' },
         ];
 
-        hints.forEach(({ id, key }) => {
-          const hintElem = document.getElementById(id);
-          if (!hintElem) return;
+        const container = document.getElementById('hintsContainer');
+        container.innerHTML = '';
+
+        hints.forEach(({ id, key, text }) => {
+          const hintElem = document.createElement('div');
+          hintElem.className = 'hint';
+          hintElem.id = id;
+          hintElem.dataset.key = key;
+          hintElem.textContent = text;
+
+          const btn = document.createElement('button');
+          btn.className = 'visit-btn';
+          btn.textContent = 'I Visited';
 
           if (userData.stationsCompleted?.[key]) {
             hintElem.classList.add('complete');
-            hintElem.textContent = `✅ Completed - ${hintElem.textContent}`;
-          } else {
-            hintElem.textContent = `❌ Not completed - ${hintElem.textContent}`;
+            btn.disabled = true;
+            btn.textContent = 'Visited';
           }
+
+          btn.addEventListener('click', async () => {
+            btn.disabled = true;
+            btn.textContent = 'Marking…';
+
+            try {
+              await updateDoc(userDocRef, {
+                [`stationsCompleted.${key}`]: true
+              });
+              hintElem.classList.add('complete');
+              btn.textContent = 'Visited';
+            } catch (e) {
+              console.error('Failed to mark visited', e);
+              btn.disabled = false;
+              btn.textContent = 'I Visited';
+            }
+          });
+
+          hintElem.appendChild(btn);
+          container.appendChild(hintElem);
         });
 
       } catch (error) {
@@ -136,17 +108,11 @@
 <body>
   <h1>Heartland Treasure Hunt</h1>
 
-  <h2>Scan QR Code to Mark Completion</h2>
-  <div id="reader" style="width:300px;"></div>
-  <button onclick="startScan()">Start Scanning</button>
-  <button onclick="stopScan()">Stop Scanning</button>
-
   <p id="userIDDisplay"><strong>Your ID:</strong> <span></span></p>
   <button onclick="navigator.clipboard.writeText(window.location.href)">Copy Your Resume Link</button>
 
-  <div class="hint" id="hint1">🔍 Hint 1: [describe station 1]</div>
-  <div class="hint" id="hint2">🔍 Hint 2: [describe station 2]</div>
-  <div class="hint" id="hint3">🔍 Hint 3: [describe station 3]</div>
-  <div class="hint" id="hint4">🔍 Hint 4: [describe station 4]</div>
+  <div id="hintsContainer">
+    <!-- Hints with visit buttons will be rendered here -->
+  </div>
 </body>
 </html>
