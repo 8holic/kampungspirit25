@@ -2,15 +2,44 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>Treasure Hunt Dashboard</title>
+  <title>Booth Stamp Tracker</title>
   <style>
-    body { font-family: Arial, sans-serif; max-width: 600px; margin: 2rem auto; }
-    .hint { margin: 2em 0; border: 1px solid #ddd; padding: 1em; border-radius: 6px; display: flex; align-items: center; }
-    .hint.complete { opacity: 0.6; }
-    .hint img { width: 100px; height: 100px; object-fit: cover; margin-right: 1em; border-radius: 4px; }
-    .hint-content { flex: 1; }
-    .visit-btn { margin-left: 1em; padding: 0.5em 1em; }
+    body {
+      font-family: Arial, sans-serif;
+      max-width: 800px;
+      margin: 2rem auto;
+    }
+
+    h2 {
+      margin-top: 2em;
+      border-bottom: 1px solid #ccc;
+      padding-bottom: 0.3em;
+    }
+
+    .booth-group {
+      margin-bottom: 2em;
+    }
+
+    .station-btn {
+      display: inline-block;
+      margin: 0.5em;
+      padding: 0.6em 1.2em;
+      border: 1px solid #666;
+      border-radius: 5px;
+      background-color: #f0f0f0;
+      cursor: pointer;
+      font-size: 0.95em;
+      transition: 0.2s;
+    }
+
+    .station-btn.visited {
+      background-color: #d0d0d0;
+      color: #666;
+      text-decoration: line-through;
+      pointer-events: none;
+    }
   </style>
+
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/11.9.1/firebase-app.js";
     import { getFirestore, doc, getDoc, updateDoc } from "https://www.gstatic.com/firebasejs/11.9.1/firebase-firestore.js";
@@ -28,8 +57,30 @@
     const app = initializeApp(firebaseConfig);
     const db = getFirestore(app);
 
+    const groupedStations = {
+      "Blk 698 Booth": [
+        "Care Booth",
+        "S3 Booth",
+        "NEA Booth",
+        "RN Zone 5",
+        "CCAC Booth",
+        "Food Booth 1 Goreng Pisang",
+        "Food Booth 2 Roti Prata",
+        "Food Booth 3 Tutu Keh"
+      ],
+      "Blk 698B Booth": [
+        "Smash the Cans",
+        "Ring the Bottle",
+        "Rubber Band Gun",
+        "Hop-Scotch"
+      ],
+      "Blk 698A Booth": [
+        "C2E Booth",
+        "Bouncy Castle"
+      ]
+    };
+
     window.addEventListener('DOMContentLoaded', async () => {
-      // --- Fetch or redirect if no userID ---
       const params = new URLSearchParams(window.location.search);
       const userID = params.get('userID') || localStorage.getItem('huntUserID');
       if (!userID) {
@@ -37,106 +88,71 @@
         window.location.href = 'index.html';
         return;
       }
+
       localStorage.setItem('huntUserID', userID);
       document.querySelector('#userIDDisplay span').textContent = userID;
 
-      // --- Load userData ---
       const userDocRef = doc(db, "kampungspirit25", userID);
       const userSnap = await getDoc(userDocRef);
       if (!userSnap.exists()) {
         alert('User data not found.');
         return;
       }
+
       const userData = userSnap.data();
-
-      // --- Define each station (you can swap in real image URLs) ---
-      const hints = [
-        {
-          key: 'Five Stones',
-          text: '🎯 Test your reflexes and old-school cool! Visit us beside the hall',
-          imageUrl: './images/station1.jpg'
-        },
-        {
-          key: 'Chapteh Champion Arena',
-          text: '🔥 Can you kick it? Visit us near the entrance',
-          imageUrl: './images/station2.jpg'
-        },
-        {
-          key: 'Pick-Up Sticks',
-          text: '💥 Nerves of steel required! We are at the centre',
-          imageUrl: './images/station3.jpg'
-        },
-        {
-          key: 'Marble Game',
-          text: '🎯 Marble masters, assemble!',
-          imageUrl: './images/station4.jpg'
-        },
-      ];
-
-      // --- Render all hints ---
-      const container = document.getElementById('hintsContainer');
+      const container = document.getElementById('stationsContainer');
       container.innerHTML = '';
-      hints.forEach(({ key, text, imageUrl }) => {
-        const done = !!userData.stationsCompleted?.[key];
 
-        const wrapper = document.createElement('div');
-        wrapper.className = 'hint' + (done ? ' complete' : '');
-        wrapper.dataset.key = key;
+      for (const [groupName, stations] of Object.entries(groupedStations)) {
+        const section = document.createElement('div');
+        section.className = 'booth-group';
 
-        const img = document.createElement('img');
-        img.src = imageUrl;
-        img.alt = key;
-        wrapper.appendChild(img);
+        const header = document.createElement('h2');
+        header.textContent = groupName;
+        section.appendChild(header);
 
-        const content = document.createElement('div');
-        content.className = 'hint-content';
-        content.textContent = text;
-        wrapper.appendChild(content);
+        stations.forEach((key) => {
+          const done = !!userData.stationsCompleted?.[key];
 
-        const btn = document.createElement('button');
-        btn.className = 'visit-btn';
-        btn.textContent = done ? 'Undo Visit' : 'I Visited';
-        wrapper.appendChild(btn);
+          const btn = document.createElement('button');
+          btn.className = 'station-btn';
+          if (done) btn.classList.add('visited');
+          btn.textContent = done ? `${key} ✓` : key;
 
-        btn.addEventListener('click', async () => {
-          const newState = !wrapper.classList.contains('complete');
-          const action = newState ? 'mark as visited' : 'undo visit';
-          if (!confirm(`Are you sure you want to ${action}?`)) return;
+          btn.addEventListener('click', async () => {
+            btn.disabled = true;
+            btn.textContent = 'Saving...';
 
-          btn.disabled = true;
-          btn.textContent = newState ? 'Saving…' : 'Reverting…';
+            try {
+              await updateDoc(userDocRef, {
+                [`stationsCompleted.${key}`]: true
+              });
+              btn.classList.add('visited');
+              btn.textContent = `${key} ✓`;
+            } catch (err) {
+              console.error('Update failed', err);
+              btn.textContent = key;
+            } finally {
+              btn.disabled = true;
+            }
+          });
 
-          try {
-            // update firestore
-            await updateDoc(userDocRef, {
-              [`stationsCompleted.${key}`]: newState
-            });
-            // update UI
-            wrapper.classList.toggle('complete', newState);
-            btn.textContent = newState ? 'Undo Visit' : 'I Visited';
-          } catch (err) {
-            console.error('Update failed', err);
-            btn.textContent = newState ? 'I Visited' : 'Undo Visit';
-          } finally {
-            btn.disabled = false;
-          }
+          section.appendChild(btn);
         });
 
-        container.appendChild(wrapper);
-      });
+        container.appendChild(section);
+      }
     });
   </script>
 </head>
+
 <body>
-  <h1>Heartland Treasure Hunt</h1>
-
+  <h1>Booth Completion Tracker</h1>
   <p id="userIDDisplay"><strong>Your ID:</strong> <span></span></p>
-  <button onclick="navigator.clipboard.writeText(window.location.href)">
-    Copy Your Resume Link
-  </button>
+  <button onclick="navigator.clipboard.writeText(window.location.href)">Copy Your Link</button>
 
-  <div id="hintsContainer">
-    <!-- populated dynamically -->
+  <div id="stationsContainer">
+    <!-- Populated via JS -->
   </div>
 </body>
 </html>
