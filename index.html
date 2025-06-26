@@ -62,11 +62,10 @@
               'Bouncy Castle': false,
             }
           });
-          // Now add personalLink based on the ID
-          const personalLink = `start.html?userID=${encodeURIComponent(newDocRef.id)}`;
-          await updateDoc(newDocRef, { personalLink });
+          const personalLink = `start.html?userID=${encodeURIComponent(docRef.id)}`;
+          await updateDoc(docRef, { personalLink });
 
-          localStorage.setItem('huntUserID', newDocRef.id);
+          localStorage.setItem('huntUserID', docRef.id);
           window.location.href = personalLink;
 
         } catch (error) {
