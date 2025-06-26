@@ -101,11 +101,6 @@
             }
           );
 
-          // 5. Build the personalized link
-          const personalLink = `start.html?userID=${encodeURIComponent(docRef.id)}`;
-
-          // 6. Store it back on the same document
-          await updateDoc(docRef, { personalLink });
 
           // 7. Keep userID in localStorage for convenience
           localStorage.setItem('huntUserID', docRef.id);
