@@ -62,9 +62,13 @@
               'Bouncy Castle': false,
             }
           });
+          // Now add personalLink based on the ID
+          const personalLink = `start.html?userID=${encodeURIComponent(newDocRef.id)}`;
+          await updateDoc(newDocRef, { personalLink });
 
-          localStorage.setItem('huntUserID', docRef.id);
-          window.location.href = `start.html?userID=${encodeURIComponent(docRef.id)}`;
+          localStorage.setItem('huntUserID', newDocRef.id);
+          window.location.href = personalLink;
+
         } catch (error) {
           console.error("Error registering user:", error);
           alert('Registration failed. Please try again.');
