@@ -4,16 +4,45 @@
   <meta charset="UTF-8" />
   <title>Treasure Hunt Registration</title>
   <style>
-    body { font-family: Arial, sans-serif; max-width: 400px; margin: 2rem auto; }
-    label { display: block; margin-bottom: 0.5rem; }
-    input { width: 100%; padding: 0.5rem; margin-top: 0.2rem; }
-    button { padding: 0.7rem 1.2rem; font-size: 1rem; }
-    h1 { text-align: center; }
-    .header-img { display: block; margin: 0 auto 1.5rem; max-width: 100%; height: auto; }
+    body {
+      font-family: Arial, sans-serif;
+      max-width: 400px;
+      margin: 2rem auto;
+    }
+    .header-img {
+      display: block;
+      margin: 0 auto 1.5rem;
+      max-width: 100%;
+      height: auto;
+    }
+    label {
+      display: block;
+      margin-bottom: 0.5rem;
+    }
+    input {
+      width: 100%;
+      padding: 0.5rem;
+      margin-top: 0.2rem;
+    }
+    button {
+      padding: 0.7rem 1.2rem;
+      font-size: 1rem;
+      margin-top: 1rem;
+      width: 100%;
+    }
+    h1 {
+      text-align: center;
+    }
   </style>
   <script type="module">
+    // 1. Firebase App Initialization
     import { initializeApp } from "https://www.gstatic.com/firebasejs/11.9.1/firebase-app.js";
-    import { getFirestore, collection, addDoc } from "https://www.gstatic.com/firebasejs/11.9.1/firebase-firestore.js";
+    import {
+      getFirestore,
+      collection,
+      addDoc,
+      updateDoc
+    } from "https://www.gstatic.com/firebasejs/11.9.1/firebase-firestore.js";
 
     const firebaseConfig = {
       apiKey: "AIzaSyBr1EJyETcCoeGsytiP8miTBTzFPWNVkyU",
@@ -28,44 +57,60 @@
     const app = initializeApp(firebaseConfig);
     const db = getFirestore(app);
 
+    // 2. On DOM ready, attach form handler
     window.addEventListener('DOMContentLoaded', () => {
       const form = document.getElementById('regForm');
+
       form.addEventListener('submit', async (e) => {
         e.preventDefault();
-        const name = form.name.value.trim();
+
+        // 3. Gather input values
+        const name  = form.name.value.trim();
         const email = form.email.value.trim();
 
         if (!name || !email) {
-          alert('Please fill out all fields');
+          alert('Please fill out both name and email.');
           return;
         }
 
         try {
-          const docRef = await addDoc(collection(db, "kampungspirit25"), {
-            name,
-            email,
-            registeredAt: new Date().toISOString(),
-            stationsCompleted: {
-              'Care Booth': false,
-              'S3 Booth': false,
-              'NEA Booth': false,
-              'Food Booth 1 Goreng Pisang': false,
-              'Food Booth 2 Roti Prata': false,
-              'Food Booth 3 Tutu Keh': false,
-              'RN Zone 5': false,
-              'CCAC Booth': false,
-              'Smash the Cans': false,
-              'Ring the Bottle': false,
-              'Rubber Band Gun': false,
-              'Hop-Scotch': false,
-              'C2E Booth': false,
-              'Bouncy Castle': false,
+          // 4. Create the user document with initial data
+          const docRef = await addDoc(
+            collection(db, "kampungspirit25"),
+            {
+              name,
+              email,
+              registeredAt: new Date().toISOString(),
+              stationsCompleted: {
+                'Care Booth': false,
+                'S3 Booth': false,
+                'NEA Booth': false,
+                'Food Booth 1 Goreng Pisang': false,
+                'Food Booth 2 Roti Prata': false,
+                'Food Booth 3 Tutu Keh': false,
+                'RN Zone 5': false,
+                'CCAC Booth': false,
+                'Smash the Cans': false,
+                'Ring the Bottle': false,
+                'Rubber Band Gun': false,
+                'Hop-Scotch': false,
+                'C2E Booth': false,
+                'Bouncy Castle': false
+              },
+              personalLink: ""  // will be set below
             }
-          });
+          );
+
+          // 5. Build the personalized link
           const personalLink = `start.html?userID=${encodeURIComponent(docRef.id)}`;
+
+          // 6. Store it back on the same document
           await updateDoc(docRef, { personalLink });
 
+          // 7. Keep userID in localStorage for convenience
           localStorage.setItem('huntUserID', docRef.id);
+
+          // 8. Redirect the user to their personal stamp page
           window.location.href = personalLink;
 
         } catch (error) {
@@ -79,7 +124,7 @@
 <body>
   <h1>Kampung Spirit 2025!</h1>
 
-  <!-- Insert your image here -->
+  <!-- Your header image -->
   <img src="KampungPoster.jpeg" alt="Kampung Spirit Logo" class="header-img">
 
   <form id="regForm">
@@ -87,11 +132,12 @@
       Name:<br />
       <input type="text" name="name" required />
     </label>
+
     <label>
       Email:<br />
       <input type="email" name="email" required />
     </label>
-    <br />
+
     <button type="submit">Register</button>
   </form>
 </body>
