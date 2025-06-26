@@ -2,50 +2,18 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>Booth Completion Tracker</title>
+  <title>Treasure Hunt Registration</title>
   <style>
-    body {
-      font-family: Arial, sans-serif;
-      max-width: 600px;
-      margin: 2rem auto;
-      padding: 1rem;
-    }
-
-    h2 {
-      margin-top: 2rem;
-      border-bottom: 1px solid #ccc;
-      padding-bottom: 0.3rem;
-    }
-
-    .booth-group {
-      margin-bottom: 2rem;
-    }
-
-    .station-btn {
-      display: block; /* force vertical stack */
-      width: 100%;
-      margin: 0.5rem 0;
-      padding: 0.8rem;
-      border: 1px solid #333;
-      border-radius: 5px;
-      background-color: #f7f7f7;
-      cursor: pointer;
-      font-size: 1rem;
-      text-align: left;
-      transition: background-color 0.2s;
-    }
-
-    .station-btn.visited {
-      background-color: #ddd;
-      color: #555;
-      text-decoration: line-through;
-      pointer-events: none;
-    }
+    body { font-family: Arial, sans-serif; max-width: 400px; margin: 2rem auto; }
+    label { display: block; margin-bottom: 0.5rem; }
+    input { width: 100%; padding: 0.5rem; margin-top: 0.2rem; }
+    button { padding: 0.7rem 1.2rem; font-size: 1rem; }
+    h1 { text-align: center; }
+    .header-img { display: block; margin: 0 auto 1.5rem; max-width: 100%; height: auto; }
   </style>
-
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/11.9.1/firebase-app.js";
-    import { getFirestore, doc, getDoc, updateDoc } from "https://www.gstatic.com/firebasejs/11.9.1/firebase-firestore.js";
+    import { getFirestore, collection, addDoc } from "https://www.gstatic.com/firebasejs/11.9.1/firebase-firestore.js";
 
     const firebaseConfig = {
       apiKey: "AIzaSyBr1EJyETcCoeGsytiP8miTBTzFPWNVkyU",
@@ -60,106 +28,58 @@
     const app = initializeApp(firebaseConfig);
     const db = getFirestore(app);
 
-    const groupedStations = {
-      "Blk 698 Booth": [
-        "Care Booth",
-        "S3 Booth",
-        "NEA Booth",
-        "RN Zone 5",
-        "CCAC Booth",
-        "Food Booth 1 Goreng Pisang",
-        "Food Booth 2 Roti Prata",
-        "Food Booth 3 Tutu Keh"
-      ],
-      "Blk 698B Booth": [
-        "Smash the Cans",
-        "Ring the Bottle",
-        "Rubber Band Gun",
-        "Hop-Scotch"
-      ],
-      "Blk 698A Booth": [
-        "C2E Booth",
-        "Bouncy Castle"
-      ]
-    };
+    window.addEventListener('DOMContentLoaded', () => {
+      const form = document.getElementById('regForm');
+      form.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const name = form.name.value.trim();
+        const email = form.email.value.trim();
 
-    window.addEventListener('DOMContentLoaded', async () => {
-      const params = new URLSearchParams(window.location.search);
-      const userID = params.get('userID') || localStorage.getItem('huntUserID');
-      if (!userID) {
-        alert('No user ID found. Please register first.');
-        window.location.href = 'index.html';
-        return;
-      }
+        if (!name || !email) {
+          alert('Please fill out all fields');
+          return;
+        }
 
-      localStorage.setItem('huntUserID', userID);
-      document.querySelector('#userIDDisplay span').textContent = userID;
-
-      const userDocRef = doc(db, "kampungspirit25", userID);
-      const userSnap = await getDoc(userDocRef);
-      if (!userSnap.exists()) {
-        alert('User data not found.');
-        return;
-      }
-
-      const userData = userSnap.data();
-      const container = document.getElementById('stationsContainer');
-      container.innerHTML = '';
-
-      for (const [groupName, stations] of Object.entries(groupedStations)) {
-        const section = document.createElement('div');
-        section.className = 'booth-group';
-
-        const header = document.createElement('h2');
-        header.textContent = groupName;
-        section.appendChild(header);
-
-        stations.forEach((key) => {
-          const done = !!userData.stationsCompleted?.[key];
-
-          const btn = document.createElement('button');
-          btn.className = 'station-btn';
-          if (done) btn.classList.add('visited');
-          btn.textContent = done ? `${key} ✓` : key;
-
-          btn.addEventListener('click', async () => {
-            if (btn.classList.contains('visited')) return;
-
-            const confirmMark = confirm(`Confirm that "${key}" is completed? This cannot be undone.`);
-            if (!confirmMark) return;
-
-            btn.disabled = true;
-            btn.textContent = 'Saving...';
-
-            try {
-              await updateDoc(userDocRef, {
-                [`stationsCompleted.${key}`]: true
-              });
-              btn.classList.add('visited');
-              btn.textContent = `${key} ✓`;
-            } catch (err) {
-              console.error('Update failed', err);
-              btn.textContent = key;
-              btn.disabled = false;
+        try {
+          const docRef = await addDoc(collection(db, "kampungspirit25"), {
+            name,
+            email,
+            registeredAt: new Date().toISOString(),
+            stationsCompleted: {
+              'FiveStones': false,
+              'Chapteh Champion Arena': false,
+              'Pick-Up Sticks': false,
+              'Marble Game': false
             }
           });
 
-          section.appendChild(btn);
-        });
-
-        container.appendChild(section);
-      }
+          localStorage.setItem('huntUserID', docRef.id);
+          window.location.href = `start.html?userID=${encodeURIComponent(docRef.id)}`;
+        } catch (error) {
+          console.error("Error registering user:", error);
+          alert('Registration failed. Please try again.');
+        }
+      });
     });
   </script>
 </head>
-
 <body>
-  <h1>Booth Completion Tracker</h1>
-  <p id="userIDDisplay"><strong>Your ID:</strong> <span></span></p>
-  <button onclick="navigator.clipboard.writeText(window.location.href)">IMPORTANT:Save Your Link to return your card</button>
+  <h1>Kampung Spirit 2025!</h1>
 
-  <div id="stationsContainer">
-    <!-- Populated dynamically -->
-  </div>
+  <!-- Insert your image here -->
+  <img src="KampungPoster.jpeg" alt="Kampung Spirit Logo" class="header-img">
+
+  <form id="regForm">
+    <label>
+      Name:<br />
+      <input type="text" name="name" required />
+    </label>
+    <label>
+      Email:<br />
+      <input type="email" name="email" required />
+    </label>
+    <br />
+    <button type="submit">Register</button>
+  </form>
 </body>
 </html>
