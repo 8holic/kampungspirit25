@@ -2,39 +2,42 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>Booth Stamp Tracker</title>
+  <title>Booth Completion Tracker</title>
   <style>
     body {
       font-family: Arial, sans-serif;
-      max-width: 800px;
+      max-width: 600px;
       margin: 2rem auto;
+      padding: 1rem;
     }
 
     h2 {
-      margin-top: 2em;
+      margin-top: 2rem;
       border-bottom: 1px solid #ccc;
-      padding-bottom: 0.3em;
+      padding-bottom: 0.3rem;
     }
 
     .booth-group {
-      margin-bottom: 2em;
+      margin-bottom: 2rem;
     }
 
     .station-btn {
-      display: inline-block;
-      margin: 0.5em;
-      padding: 0.6em 1.2em;
-      border: 1px solid #666;
+      display: block; /* force vertical stack */
+      width: 100%;
+      margin: 0.5rem 0;
+      padding: 0.8rem;
+      border: 1px solid #333;
       border-radius: 5px;
-      background-color: #f0f0f0;
+      background-color: #f7f7f7;
       cursor: pointer;
-      font-size: 0.95em;
-      transition: 0.2s;
+      font-size: 1rem;
+      text-align: left;
+      transition: background-color 0.2s;
     }
 
     .station-btn.visited {
-      background-color: #d0d0d0;
-      color: #666;
+      background-color: #ddd;
+      color: #555;
       text-decoration: line-through;
       pointer-events: none;
     }
@@ -120,6 +123,11 @@
           btn.textContent = done ? `${key} ✓` : key;
 
           btn.addEventListener('click', async () => {
+            if (btn.classList.contains('visited')) return;
+
+            const confirmMark = confirm(`Confirm that "${key}" is completed? This cannot be undone.`);
+            if (!confirmMark) return;
+
             btn.disabled = true;
             btn.textContent = 'Saving...';
 
@@ -132,8 +140,7 @@
             } catch (err) {
               console.error('Update failed', err);
               btn.textContent = key;
-            } finally {
-              btn.disabled = true;
+              btn.disabled = false;
             }
           });
 
@@ -149,10 +156,15 @@
 <body>
   <h1>Booth Completion Tracker</h1>
   <p id="userIDDisplay"><strong>Your ID:</strong> <span></span></p>
-  <button onclick="navigator.clipboard.writeText(window.location.href)">Copy Your Link</button>
+  <button onclick="navigator.clipboard.writeText(window.location.href)">IMPORTANT:Save Your Link to return your card</button>
+
+  <!--Map -->
+  <div style="margin: 1.5rem 0;">
+    <img src="./images/eventmap.jpeg" alt="Event Map" style="width: 100%; border: 1px solid #ccc; border-radius: 6px;" />
+  </div>
 
   <div id="stationsContainer">
-    <!-- Populated via JS -->
+    <!-- Populated dynamically -->
   </div>
 </body>
 </html>
