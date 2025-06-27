@@ -158,35 +158,38 @@ onSnapshot(notificationDocRef, (docSnap) => {
         header.textContent = groupName;
         section.appendChild(header);
 
-        stations.forEach((key) => {
-          const done = !!userData.stationsCompleted?.[key];
-
-          const btn = document.createElement('button');
-          btn.className = 'station-btn';
-          if (done) btn.classList.add('visited');
-          btn.textContent = done ? `${key} ✓` : key;
-
-          btn.addEventListener('click', async () => {
-            if (btn.classList.contains('visited')) return;
-
-            const confirmMark = confirm(`Confirm that "${key}" is completed? This cannot be undone.`);
-            if (!confirmMark) return;
-
-            btn.disabled = true;
-            btn.textContent = 'Saving...';
-
-            try {
-              await updateDoc(userDocRef, {
-                [`stationsCompleted.${key}`]: true
-              });
-              btn.classList.add('visited');
-              btn.textContent = `${key} ✓`;
-            } catch (err) {
-              console.error('Update failed', err);
-              btn.textContent = key;
-              btn.disabled = false;
-            }
-          });
+      stations.forEach(({ key, label }) => {
+        const done = !!userData.stationsCompleted?.[key];
+      
+        const btn = document.createElement('button');
+        btn.className = 'station-btn';
+        if (done) btn.classList.add('visited');
+        btn.textContent = done ? `${label} ✓` : label;
+      
+        btn.addEventListener('click', async () => {
+          if (btn.classList.contains('visited')) return;
+      
+          const confirmMark = confirm(`Confirm that "${label}" is completed? This cannot be undone.`);
+          if (!confirmMark) return;
+      
+          btn.disabled = true;
+          btn.textContent = 'Saving...';
+      
+          try {
+            await updateDoc(userDocRef, {
+              [`stationsCompleted.${key}`]: true
+            });
+            btn.classList.add('visited');
+            btn.textContent = `${label} ✓`;
+          } catch (err) {
+            console.error('Update failed', err);
+            btn.textContent = label;
+            btn.disabled = false;
+          }
+        });
+      
+        section.appendChild(btn);
+      });
 
           section.appendChild(btn);
         });
