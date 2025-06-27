@@ -115,6 +115,16 @@ onSnapshot(notificationDocRef, (docSnap) => {
         { key: "Bouncy Castle", label: "14. Bouncy Castle" }
       ]
     };
+    // 2. Flatten into a stationsCompleted object
+    function buildStationsCompleted(groupedStations) {
+      const result = {};
+      for (const group of Object.values(groupedStations)) {
+        for (const { key } of group) {
+          result[key] = false;
+        }
+      }
+      return result;
+      }
 
 
     window.addEventListener('DOMContentLoaded', async () => {
