@@ -66,7 +66,7 @@
       form.addEventListener('submit', async (e) => {
         e.preventDefault();
 
-        const name  = form.name.value.trim();
+        const name = form.name.value.trim();
         const email = form.email.value.trim().toLowerCase();
 
         if (!name || !email) {
@@ -75,28 +75,29 @@
         }
 
         try {
-          // 1. Query for existing email
           const q = query(
             collection(db, "kampungspirit25"),
             where("email", "==", email)
           );
-          const snapshot = await getDocs(q);  // ← make sure to await!
+          const snapshot = await getDocs(q);
 
           if (!snapshot.empty) {
-            // 2. FOUND → log in
+            // Email already registered — treat as login
             const doc = snapshot.docs[0];
             const data = doc.data();
 
-            // build or re-use their personalLink
-            const personalLink = data.personalLink
-                                || `start.html?userID=${doc.id}`;
+            // If personalLink missing for some reason, regenerate it
+            let personalLink = data.personalLink || `start.html?userID=${doc.id}`;
 
+            // Store user ID in localStorage
             localStorage.setItem('huntUserID', doc.id);
+
+            // Redirect to personal page
             window.location.href = personalLink;
-            return;  // ← bail out immediately
+            return;
           }
 
-          // 3. NOT FOUND → register new user
+          // Not found: proceed to register
           const docRef = await addDoc(
             collection(db, "kampungspirit25"),
             {
@@ -119,18 +120,18 @@
                 'C2E Booth': false,
                 'Bouncy Castle': false
               },
-              personalLink: ""  // will set next
+              personalLink: ""
             }
           );
 
-          const newLink = `start.html?userID=${encodeURIComponent(docRef.id)}`;
-          await updateDoc(docRef, { personalLink: newLink });
+          const personalLink = `start.html?userID=${encodeURIComponent(docRef.id)}`;
+          await updateDoc(docRef, { personalLink });
 
           localStorage.setItem('huntUserID', docRef.id);
-          window.location.href = newLink;
+          window.location.href = personalLink;
 
         } catch (error) {
-          console.error("Error during registration/login:", error);
+          console.error("Error during registration:", error);
           alert('Registration failed. Please try again.');
         }
       });
@@ -139,6 +140,7 @@
 </head>
 <body>
   <h1>Kampung Spirit 2025!</h1>
+
   <img src="KampungPoster.jpeg" alt="Kampung Spirit Logo" class="header-img">
 
   <form id="regForm">
@@ -146,10 +148,12 @@
       Name:<br />
       <input type="text" name="name" required />
     </label>
+
     <label>
       Email:<br />
       <input type="email" name="email" required />
     </label>
+
     <button type="submit">Register / Login</button>
   </form>
 </body>
