@@ -76,15 +76,77 @@
         try {
           // 4. Create the user document with initial data
           const docRef = await addDoc(
-              collection(db, "kampungspirit25"),
-              {
-                name,
-                email,
-                registeredAt: new Date().toISOString(),
-                stationsCompleted: buildStationsCompleted(groupedStations),
-                personalLink: ""
-              }
-            );
+              
+            collection(db, "kampungspirit25"),Add commentMore actions
+
+
+            {
+
+
+              name,
+
+
+              email,
+
+
+              registeredAt: new Date().toISOString(),
+
+
+              stationsCompleted: {
+
+
+                'Care Booth': false,
+
+
+                'S3 Booth': false,
+
+
+                'NEA Booth': false,
+
+
+                'Food Booth 1 Goreng Pisang': false,
+
+
+                'Food Booth 2 Roti Prata': false,
+
+
+                'Food Booth 3 Tutu Keh': false,
+
+
+                'RN Zone 5': false,
+
+
+                'CCAC Booth': false,
+
+
+                'Smash the Cans': false,
+
+
+                'Ring the Bottle': false,
+
+
+                'Rubber Band Gun': false,
+
+
+                'Hop-Scotch': false,
+
+
+                'C2E Booth': false,
+
+
+                'Bouncy Castle': false
+
+
+              },
+
+
+              personalLink: ""  // will be set below
+
+
+            }
+
+
+          );
           
           // 5. Build the personalized link
           const personalLink = `start.html?userID=${encodeURIComponent(docRef.id)}`;
