@@ -34,16 +34,21 @@
       text-align: center;
     }
   </style>
+
   <script type="module">
-    // 1. Firebase App Initialization
+    // Firebase App and Firestore SDKs
     import { initializeApp } from "https://www.gstatic.com/firebasejs/11.9.1/firebase-app.js";
     import {
       getFirestore,
       collection,
       addDoc,
-      updateDoc
+      updateDoc,
+      query,
+      where,
+      getDocs
     } from "https://www.gstatic.com/firebasejs/11.9.1/firebase-firestore.js";
 
+    // Firebase config
     const firebaseConfig = {
       apiKey: "AIzaSyBr1EJyETcCoeGsytiP8miTBTzFPWNVkyU",
       authDomain: "digital-stamp-info-sgbitcraft.firebaseapp.com",
@@ -57,16 +62,14 @@
     const app = initializeApp(firebaseConfig);
     const db = getFirestore(app);
 
-    // 2. On DOM ready, attach form handler
     window.addEventListener('DOMContentLoaded', () => {
       const form = document.getElementById('regForm');
 
       form.addEventListener('submit', async (e) => {
         e.preventDefault();
 
-        // 3. Gather input values
         const name  = form.name.value.trim();
-        const email = form.email.value.trim();
+        const email = form.email.value.trim().toLowerCase();
 
         if (!name || !email) {
           alert('Please fill out both name and email.');
@@ -74,7 +77,19 @@
         }
 
         try {
-          // 4. Create the user document with initial data
+          // Check if the email already exists
+          const q = query(
+            collection(db, "kampungspirit25"),
+            where("email", "==", email)
+          );
+          const querySnapshot = await getDocs(q);
+
+          if (!querySnapshot.empty) {
+            alert('This email is already registered.');
+            return;
+          }
+
+          // Register the new user
           const docRef = await addDoc(
             collection(db, "kampungspirit25"),
             {
@@ -97,24 +112,18 @@
                 'C2E Booth': false,
                 'Bouncy Castle': false
               },
-              personalLink: ""  // will be set below
+              personalLink: ""
             }
           );
-          
-          // 5. Build the personalized link
-          const personalLink = `start.html?userID=${encodeURIComponent(docRef.id)}`;
 
-          // 6. Store it back on the same document
+          const personalLink = `start.html?userID=${encodeURIComponent(docRef.id)}`;
           await updateDoc(docRef, { personalLink });
 
-          // 7. Keep userID in localStorage for convenience
           localStorage.setItem('huntUserID', docRef.id);
-
-          // 8. Redirect the user to their personal stamp page
           window.location.href = personalLink;
 
         } catch (error) {
-          console.error("Error registering user:", error);
+          console.error("Error during registration:", error);
           alert('Registration failed. Please try again.');
         }
       });
@@ -124,7 +133,6 @@
 <body>
   <h1>Kampung Spirit 2025!</h1>
 
-  <!-- Your header image -->
   <img src="KampungPoster.jpeg" alt="Kampung Spirit Logo" class="header-img">
 
   <form id="regForm">
