@@ -59,6 +59,31 @@
 
     const app = initializeApp(firebaseConfig);
     const db = getFirestore(app);
+    //Firebase should have been activated at this point
+    import { onSnapshot } from "https://www.gstatic.com/firebasejs/11.9.1/firebase-firestore.js";
+
+    // Live notification listener
+    const notificationDocRef = doc(db, "announcements", "global");
+
+    onSnapshot(notificationDocRef, (docSnap) => {
+      if (docSnap.exists()) {
+        const data = docSnap.data();
+        const message = data.message?.trim();
+
+        const bar = document.getElementById('notificationBar');
+        const text = document.getElementById('notificationText');
+
+        if (message) {
+          text.textContent = message;
+          bar.style.display = 'block';
+        } else {
+          bar.style.display = 'none';
+        }
+      } else {
+        console.warn("Notification document does not exist");
+      }
+    });
+
 
     const groupedStations = {
       "Blk 698 Booth": [
@@ -161,6 +186,10 @@
   <!--Map -->
   <div style="margin: 1.5rem 0;">
     <img src="./images/eventmap.jpeg" alt="Event Map" style="width: 100%; border: 1px solid #ccc; border-radius: 6px;" />
+  </div>
+
+  <div id="notificationBar" style="display: none; background: #ffeeba; padding: 1rem; border: 1px solid #f0ad4e; border-radius: 5px; margin-bottom: 1.5rem;">
+  <strong>Notice:</strong> <span id="notificationText"></span>
   </div>
 
   <div id="stationsContainer">
