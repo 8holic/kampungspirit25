@@ -95,37 +95,26 @@ onSnapshot(notificationDocRef, (docSnap) => {
 
     const groupedStations = {
       "Blk 698 Booth": [
-        { key: "Care Booth", label: "1. Care Booth" },
-        { key: "S3 Booth", label: "2. S3 Booth" },
-        { key: "NEA Booth", label: "3. NEA Booth" },
-        { key: "RN Zone 5", label: "4. RN Zone 5" },
-        { key: "CCAC Booth", label: "5. CCAC Booth" },
-        { key: "Food Booth 1 Goreng Pisang", label: "6. Food Booth 1 Goreng Pisang" },
-        { key: "Food Booth 2 Roti Prata", label: "7. Food Booth 2 Roti Prata" },
-        { key: "Food Booth 3 Tutu Keh", label: "8. Food Booth 3 Tutu Keh" }
+        "1.Care Booth",
+        "2.S3 Booth",
+        "3.NEA Booth",
+        "4.RN Zone 5",
+        "5.CCAC Booth",
+        "6.Food Booth 1 Goreng Pisang",
+        "7.Food Booth 2 Roti Prata",
+        "8.Food Booth 3 Tutu Keh"
       ],
       "Blk 698B Booth": [
-        { key: "Smash the Cans", label: "9. Smash the Cans" },
-        { key: "Ring the Bottle", label: "10. Ring the Bottle" },
-        { key: "Rubber Band Gun", label: "11. Rubber Band Gun" },
-        { key: "Hop-Scotch", label: "12. Hop-Scotch" }
+        "9.Smash the Cans",
+        "10.Ring the Bottle",
+        "11.Rubber Band Gun",
+        "12.Hop-Scotch"
       ],
       "Blk 698A Booth": [
-        { key: "C2E Booth", label: "13. C2E Booth" },
-        { key: "Bouncy Castle", label: "14. Bouncy Castle" }
+        "13.C2E Booth",
+        "14.Bouncy Castle"
       ]
     };
-    // 2. Flatten into a stationsCompleted object
-    function buildStationsCompleted(groupedStations) {
-      const result = {};
-      for (const group of Object.values(groupedStations)) {
-        for (const { key } of group) {
-          result[key] = false;
-        }
-      }
-      return result;
-      }
-
 
     window.addEventListener('DOMContentLoaded', async () => {
       const params = new URLSearchParams(window.location.search);
@@ -158,38 +147,35 @@ onSnapshot(notificationDocRef, (docSnap) => {
         header.textContent = groupName;
         section.appendChild(header);
 
-      stations.forEach(({ key, label }) => {
-        const done = !!userData.stationsCompleted?.[key];
-      
-        const btn = document.createElement('button');
-        btn.className = 'station-btn';
-        if (done) btn.classList.add('visited');
-        btn.textContent = done ? `${label} ✓` : label;
-      
-        btn.addEventListener('click', async () => {
-          if (btn.classList.contains('visited')) return;
-      
-          const confirmMark = confirm(`Confirm that "${label}" is completed? This cannot be undone.`);
-          if (!confirmMark) return;
-      
-          btn.disabled = true;
-          btn.textContent = 'Saving...';
-      
-          try {
-            await updateDoc(userDocRef, {
-              [`stationsCompleted.${key}`]: true
-            });
-            btn.classList.add('visited');
-            btn.textContent = `${label} ✓`;
-          } catch (err) {
-            console.error('Update failed', err);
-            btn.textContent = label;
-            btn.disabled = false;
-          }
-        });
-      
-        section.appendChild(btn);
-      });
+        stations.forEach((key) => {
+          const done = !!userData.stationsCompleted?.[key];
+
+          const btn = document.createElement('button');
+          btn.className = 'station-btn';
+          if (done) btn.classList.add('visited');
+          btn.textContent = done ? `${key} ✓` : key;
+
+          btn.addEventListener('click', async () => {
+            if (btn.classList.contains('visited')) return;
+
+            const confirmMark = confirm(`Confirm that "${key}" is completed? This cannot be undone.`);
+            if (!confirmMark) return;
+
+            btn.disabled = true;
+            btn.textContent = 'Saving...';
+
+            try {
+              await updateDoc(userDocRef, {
+                [`stationsCompleted.${key}`]: true
+              });
+              btn.classList.add('visited');
+              btn.textContent = `${key} ✓`;
+            } catch (err) {
+              console.error('Update failed', err);
+              btn.textContent = key;
+              btn.disabled = false;
+            }
+          });
 
           section.appendChild(btn);
         });
