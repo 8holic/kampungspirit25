@@ -33,6 +33,11 @@
     h1 {
       text-align: center;
     }
+    #message {
+      text-align: center;
+      color: green;
+      margin-top: 1rem;
+    }
   </style>
 
   <script type="module">
@@ -62,6 +67,7 @@
 
     window.addEventListener('DOMContentLoaded', () => {
       const form = document.getElementById('regForm');
+      const messageEl = document.getElementById('message');
 
       form.addEventListener('submit', async (e) => {
         e.preventDefault();
@@ -82,22 +88,20 @@
           const snapshot = await getDocs(q);
 
           if (!snapshot.empty) {
-            // Email already registered — treat as login
             const doc = snapshot.docs[0];
             const data = doc.data();
+            const personalLink = data.personalLink || `start.html?userID=${doc.id}`;
 
-            // If personalLink missing for some reason, regenerate it
-            let personalLink = data.personalLink || `start.html?userID=${doc.id}`;
-
-            // Store user ID in localStorage
+            messageEl.textContent = 'Existing registration detected, redirecting...';
             localStorage.setItem('huntUserID', doc.id);
 
-            // Redirect to personal page
-            window.location.href = personalLink;
+            setTimeout(() => {
+              window.location.href = personalLink;
+            }, 1500);
+
             return;
           }
 
-          // Not found: proceed to register
           const docRef = await addDoc(
             collection(db, "kampungspirit25"),
             {
@@ -140,21 +144,18 @@
 </head>
 <body>
   <h1>Kampung Spirit 2025!</h1>
-
   <img src="KampungPoster.jpeg" alt="Kampung Spirit Logo" class="header-img">
-
   <form id="regForm">
     <label>
       Name:<br />
       <input type="text" name="name" required />
     </label>
-
     <label>
       Email:<br />
       <input type="email" name="email" required />
     </label>
-
     <button type="submit">Register / Login</button>
   </form>
+  <p id="message"></p>
 </body>
 </html>
