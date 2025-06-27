@@ -65,24 +65,32 @@
     // Live notification listener
     const notificationDocRef = doc(db, "announcements", "global");
 
-    onSnapshot(notificationDocRef, (docSnap) => {
-      if (docSnap.exists()) {
-        const data = docSnap.data();
-        const message = data.message?.trim();
+let lastMessage = null;
 
-        const bar = document.getElementById('notificationBar');
-        const text = document.getElementById('notificationText');
+onSnapshot(notificationDocRef, (docSnap) => {
+  if (!docSnap.exists()) return;
 
-        if (message) {
-          text.textContent = message;
-          bar.style.display = 'block';
-        } else {
-          bar.style.display = 'none';
-        }
-      } else {
-        console.warn("Notification document does not exist");
-      }
-    });
+  const data = docSnap.data();
+  const message = data.message?.trim() || '';
+
+  if (lastMessage !== null && message !== lastMessage) {
+    // Only reload if message changed after first load
+    window.location.reload();
+  }
+
+  lastMessage = message;
+
+  const bar = document.getElementById('notificationBar');
+  const text = document.getElementById('notificationText');
+
+  if (message) {
+    text.textContent = message;
+    bar.style.display = 'block';
+  } else {
+    bar.style.display = 'none';
+  }
+});
+
 
 
     const groupedStations = {
