@@ -69,9 +69,10 @@
       getFirestore,
       doc,
       getDoc,
-      updateDoc
+      setDoc,
+      updateDoc,
+      onSnapshot
     } from "https://www.gstatic.com/firebasejs/11.9.1/firebase-firestore.js";
-    import { onSnapshot } from "https://www.gstatic.com/firebasejs/11.9.1/firebase-firestore.js";
 
     // Firebase init
     const firebaseConfig = {
@@ -146,7 +147,7 @@
       html5QrCode.stop().then(() => { html5QrCode.clear(); scanning = false; });
     };
 
-    // After scan
+    // Handle scan success
     async function onScanSuccess(decodedText) {
       try {
         const url = new URL(decodedText);
@@ -156,6 +157,7 @@
           alert("Invalid QR or missing user ID.");
           return;
         }
+
         const userRef = doc(db, "kampungspirit25", userID);
         const snap = await getDoc(userRef);
         const data = snap.exists() ? snap.data() : {};
@@ -166,16 +168,14 @@
         // check treasure
         const treasures = data.treasureStations || [];
         const foundTreasure = treasures.includes(station);
+
         document.getElementById("status").textContent =
           foundTreasure
             ? `🎉 You found a TREASURE at "${station}"!`
             : `✅ "${station}" completed.`;
 
-        // update DOM
         markStationVisited(station);
         if (foundTreasure) markStationTreasure(station);
-
-        // full completion?
         checkAllDone(userRef);
       } catch (e) {
         console.error(e);
@@ -185,26 +185,24 @@
       }
     }
 
-    // render stations
-    function renderStations(statuses = {}, treasures = []) {
-      const c = document.getElementById("stationsContainer");
-      c.innerHTML = "";
+    // Render only statuses initially
+    function renderStations(statuses = {}) {
+      const container = document.getElementById("stationsContainer");
+      container.innerHTML = "";
+      let idx = 1;
       for (const [block, stations] of Object.entries(groupedStations)) {
-        const div = document.createElement("div");
-        div.className = "block";
-        const h2 = document.createElement("h2");
-        h2.textContent = block;
-        div.appendChild(h2);
-        stations.forEach(s => {
+        const blockDiv = document.createElement("div");
+        blockDiv.className = "block";
+        blockDiv.innerHTML = `<h2>${block}</h2>`;
+        stations.forEach(key => {
           const el = document.createElement("div");
-          el.textContent = s;
-          el.id = `station-${s.replace(/\s+/g, "_")}`;
-          let cls = "station";
-          if (statuses[s]) cls += " visited";
-          el.className = cls;
-          div.appendChild(el);
+          el.textContent = `${idx}. ${key}`;
+          el.id = `station-${key.replace(/\s+/g, "_")}`;
+          el.className = "station" + (statuses[key] ? " visited" : "");
+          blockDiv.appendChild(el);
+          idx++;
         });
-        c.appendChild(div);
+        container.appendChild(blockDiv);
       }
     }
 
@@ -222,12 +220,13 @@
     async function checkAllDone(userRef) {
       const snap = await getDoc(userRef);
       if (!snap.exists()) return;
-      const done = Object.values(snap.data().stationsCompleted || {}).filter(v => v).length;
-      const total = allStations.length;
-      if (done === total) document.getElementById("completionMessage").style.display = "block";
+      const done = Object.values(snap.data().stationsCompleted || {})
+                       .filter(v => v).length;
+      if (done === allStations.length) {
+        document.getElementById("completionMessage").style.display = "block";
+      }
     }
 
-    // pick random treasures
     function pickTreasureStations() {
       const copy = [...allStations];
       const picked = [];
@@ -238,7 +237,7 @@
       return picked;
     }
 
-    // on load
+    // On load
     window.addEventListener("DOMContentLoaded", async () => {
       const params = new URLSearchParams(window.location.search);
       const userID = params.get("userID") || localStorage.getItem("huntUserID");
@@ -254,15 +253,14 @@
       const snap = await getDoc(userRef);
       const data = snap.exists() ? snap.data() : {};
 
-      // if no treasureStations assigned yet, pick and save 5
+      // assign treasures once
       let treasures = data.treasureStations;
       if (!Array.isArray(treasures) || treasures.length !== 5) {
         treasures = pickTreasureStations();
-        await updateDoc(userRef, { treasureStations: treasures });
+        await setDoc(userRef, { treasureStations: treasures }, { merge: true });
       }
 
-      // initial render
-      renderStations(data.stationsCompleted || {}, treasures);
+      renderStations(data.stationsCompleted || {});
       checkAllDone(userRef);
     });
   </script>
