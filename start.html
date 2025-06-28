@@ -49,9 +49,7 @@
       cursor: default;
     }
     .station.visited { text-decoration: line-through; color: #555; }
-    .station.treasure::after {
-      content: " 🎁";
-    }
+    .station.treasure::after { content: " 🎁"; }
     #reader { width: 300px; margin: 1rem auto; }
     .scan-buttons { text-align: center; margin: 1rem 0; }
     .scan-buttons button {
@@ -74,7 +72,6 @@
       onSnapshot
     } from "https://www.gstatic.com/firebasejs/11.9.1/firebase-firestore.js";
 
-    // Firebase init
     const firebaseConfig = {
       apiKey: "AIzaSyBr1EJyETcCoeGsytiP8miTBTzFPWNVkyU",
       authDomain: "digital-stamp-info-sgbitcraft.firebaseapp.com",
@@ -87,7 +84,6 @@
     const app = initializeApp(firebaseConfig);
     const db = getFirestore(app);
 
-    // Announcement listener
     const notifRef = doc(db, "announcements", "global");
     let lastMsg = null;
     onSnapshot(notifRef, snap => {
@@ -104,7 +100,6 @@
       }
     });
 
-    // Station groups
     const groupedStations = {
       "Blk 698 Booth": [
         "Care Booth",
@@ -129,7 +124,6 @@
     };
     const allStations = Object.values(groupedStations).flat();
 
-    // QR scanner
     let html5QrCode, scanning = false;
     window.startScan = async () => {
       if (scanning) return;
@@ -147,7 +141,6 @@
       html5QrCode.stop().then(() => { html5QrCode.clear(); scanning = false; });
     };
 
-    // Handle scan success
     async function onScanSuccess(decodedText) {
       try {
         const url = new URL(decodedText);
@@ -162,10 +155,8 @@
         const snap = await getDoc(userRef);
         const data = snap.exists() ? snap.data() : {};
 
-        // mark visited
         await updateDoc(userRef, { [`stationsCompleted.${station}`]: true });
 
-        // check treasure
         const treasures = data.treasureStations || [];
         const foundTreasure = treasures.includes(station);
 
@@ -185,7 +176,6 @@
       }
     }
 
-    // Render only statuses initially
     function renderStations(statuses = {}) {
       const container = document.getElementById("stationsContainer");
       container.innerHTML = "";
@@ -218,9 +208,9 @@
     async function checkAllDone(userRef) {
       const snap = await getDoc(userRef);
       if (!snap.exists()) return;
-      const done = Object.values(snap.data().stationsCompleted || {})
-                       .filter(v => v).length;
-      if (done === allStations.length) {
+      const doneCount = Object.values(snap.data().stationsCompleted || {})
+                              .filter(v => v).length;
+      if (doneCount === allStations.length) {
         document.getElementById("completionMessage").style.display = "block";
       }
     }
@@ -235,7 +225,6 @@
       return picked;
     }
 
-    // On load
     window.addEventListener("DOMContentLoaded", async () => {
       const params = new URLSearchParams(window.location.search);
       const userID = params.get("userID") || localStorage.getItem("huntUserID");
@@ -251,17 +240,19 @@
       const snap = await getDoc(userRef);
       const data = snap.exists() ? snap.data() : {};
 
-      // assign treasures once
       let treasures = data.treasureStations;
       if (!Array.isArray(treasures) || treasures.length !== 5) {
         treasures = pickTreasureStations();
         await setDoc(userRef, { treasureStations: treasures }, { merge: true });
       }
 
-      renderStations(data.stationsCompleted || {});
+      const statuses = data.stationsCompleted || {};
+      renderStations(statuses);
 
-      // <— HERE: immediately mark all treasure stations on load
-      treasures.forEach(st => markStationTreasure(st));
+      // reveal only those treasures already scanned
+      treasures.forEach(st => {
+        if (statuses[st]) markStationTreasure(st);
+      });
 
       checkAllDone(userRef);
     });
@@ -288,7 +279,6 @@
   </div>
 
   <div id="stationsContainer"></div>
-
   <div id="reader"></div>
   <div class="scan-buttons">
     <button onclick="startScan()">Start Scanning</button>
