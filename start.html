@@ -207,14 +207,12 @@
     }
 
     function markStationVisited(station) {
-      document
-        .getElementById(`station-${station.replace(/\s+/g, "_")}`)
-        .classList.add("visited");
+      const el = document.getElementById(`station-${station.replace(/\s+/g, "_")}`);
+      if (el) el.classList.add("visited");
     }
     function markStationTreasure(station) {
-      document
-        .getElementById(`station-${station.replace(/\s+/g, "_")}`)
-        .classList.add("treasure");
+      const el = document.getElementById(`station-${station.replace(/\s+/g, "_")}`);
+      if (el) el.classList.add("treasure");
     }
 
     async function checkAllDone(userRef) {
@@ -261,6 +259,10 @@
       }
 
       renderStations(data.stationsCompleted || {});
+
+      // <— HERE: immediately mark all treasure stations on load
+      treasures.forEach(st => markStationTreasure(st));
+
       checkAllDone(userRef);
     });
   </script>
