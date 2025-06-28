@@ -201,7 +201,6 @@
           el.id = `station-${s.replace(/\s+/g, "_")}`;
           let cls = "station";
           if (statuses[s]) cls += " visited";
-          if (treasures.includes(s)) cls += " treasure";
           el.className = cls;
           div.appendChild(el);
         });
