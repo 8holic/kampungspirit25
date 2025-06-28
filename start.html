@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>Kampung Spirit QR Tracker</title>
+  <title>Kampung Spirit QR & Treasure Tracker</title>
   <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
   <style>
     body {
@@ -11,13 +11,8 @@
       margin: 2rem auto;
       padding: 1rem;
     }
-    h1 {
-      text-align: center;
-    }
-    #userIDDisplay {
-      text-align: center;
-      margin-bottom: 1rem;
-    }
+    h1 { text-align: center; }
+    #userIDDisplay { text-align: center; margin-bottom: 1rem; }
     #notificationBar {
       display: none;
       background: #ffeeba;
@@ -42,9 +37,7 @@
       border-radius: 6px;
       margin: 1.5rem 0;
     }
-    .block {
-      margin-bottom: 2rem;
-    }
+    .block { margin-bottom: 2rem; }
     .block h2 {
       margin-bottom: 0.5rem;
       border-bottom: 1px solid #ccc;
@@ -55,29 +48,19 @@
       padding: 0.4rem;
       cursor: default;
     }
-    .station.visited {
-      text-decoration: line-through;
-      color: #555;
+    .station.visited { text-decoration: line-through; color: #555; }
+    .station.treasure::after {
+      content: " 🎁";
     }
-    #reader {
-      width: 300px;
-      margin: 1rem auto;
-    }
-    .scan-buttons {
-      text-align: center;
-      margin: 1rem 0;
-    }
+    #reader { width: 300px; margin: 1rem auto; }
+    .scan-buttons { text-align: center; margin: 1rem 0; }
     .scan-buttons button {
       padding: 0.8rem 1.2rem;
       font-size: 1rem;
       margin: 0.3rem;
       cursor: pointer;
     }
-    #status {
-      text-align: center;
-      margin-top: 1rem;
-      font-weight: bold;
-    }
+    #status { text-align: center; margin-top: 1rem; font-weight: bold; }
   </style>
 
   <script type="module">
@@ -90,7 +73,7 @@
     } from "https://www.gstatic.com/firebasejs/11.9.1/firebase-firestore.js";
     import { onSnapshot } from "https://www.gstatic.com/firebasejs/11.9.1/firebase-firestore.js";
 
-    // Firebase config & init
+    // Firebase init
     const firebaseConfig = {
       apiKey: "AIzaSyBr1EJyETcCoeGsytiP8miTBTzFPWNVkyU",
       authDomain: "digital-stamp-info-sgbitcraft.firebaseapp.com",
@@ -103,7 +86,7 @@
     const app = initializeApp(firebaseConfig);
     const db = getFirestore(app);
 
-    // Listen for global announcements
+    // Announcement listener
     const notifRef = doc(db, "announcements", "global");
     let lastMsg = null;
     onSnapshot(notifRef, snap => {
@@ -123,28 +106,29 @@
     // Station groups
     const groupedStations = {
       "Blk 698 Booth": [
-        "1 Care Booth",
-        "2 S3 Booth",
-        "3 NEA Booth",
-        "4 RN Zone 5",
-        "5 CCAC Booth",
-        "6 Food Booth 1 Goreng Pisang",
-        "7 Food Booth 2 Roti Prata",
-        "8 Food Booth 3 Tutu Keh"
+        "Care Booth",
+        "S3 Booth",
+        "NEA Booth",
+        "RN Zone 5",
+        "CCAC Booth",
+        "Food Booth 1 Goreng Pisang",
+        "Food Booth 2 Roti Prata",
+        "Food Booth 3 Tutu Keh"
       ],
       "Blk 698B Booth": [
-        "9 Smash the Cans",
-        "10 Ring the Bottle",
-        "11 Rubber Band Gun",
-        "12 Hop-Scotch"
+        "Smash the Cans",
+        "Ring the Bottle",
+        "Rubber Band Gun",
+        "Hop-Scotch"
       ],
       "Blk 698A Booth": [
-        "13 C2E Booth",
-        "14 Bouncy Castle"
+        "C2E Booth",
+        "Bouncy Castle"
       ]
     };
+    const allStations = Object.values(groupedStations).flat();
 
-    // QR scanner setup
+    // QR scanner
     let html5QrCode, scanning = false;
     window.startScan = async () => {
       if (scanning) return;
@@ -162,7 +146,7 @@
       html5QrCode.stop().then(() => { html5QrCode.clear(); scanning = false; });
     };
 
-    // Handle a successful scan
+    // After scan
     async function onScanSuccess(decodedText) {
       try {
         const url = new URL(decodedText);
@@ -173,10 +157,25 @@
           return;
         }
         const userRef = doc(db, "kampungspirit25", userID);
+        const snap = await getDoc(userRef);
+        const data = snap.exists() ? snap.data() : {};
+
+        // mark visited
         await updateDoc(userRef, { [`stationsCompleted.${station}`]: true });
+
+        // check treasure
+        const treasures = data.treasureStations || [];
+        const foundTreasure = treasures.includes(station);
+        document.getElementById("status").textContent =
+          foundTreasure
+            ? `🎉 You found a TREASURE at "${station}"!`
+            : `✅ "${station}" completed.`;
+
+        // update DOM
         markStationVisited(station);
-        document.getElementById("status").textContent = `✅ "${station}" completed!`;
-        // check full completion
+        if (foundTreasure) markStationTreasure(station);
+
+        // full completion?
         checkAllDone(userRef);
       } catch (e) {
         console.error(e);
@@ -186,44 +185,61 @@
       }
     }
 
-    // Render all stations into the DOM
-    function renderStations(statuses) {
-      const container = document.getElementById("stationsContainer");
-      container.innerHTML = "";
+    // render stations
+    function renderStations(statuses = {}, treasures = []) {
+      const c = document.getElementById("stationsContainer");
+      c.innerHTML = "";
       for (const [block, stations] of Object.entries(groupedStations)) {
-        const bDiv = document.createElement("div");
-        bDiv.className = "block";
+        const div = document.createElement("div");
+        div.className = "block";
         const h2 = document.createElement("h2");
         h2.textContent = block;
-        bDiv.appendChild(h2);
+        div.appendChild(h2);
         stations.forEach(s => {
-          const p = document.createElement("div");
-          p.textContent = s;
-          p.id = `station-${s.replace(/\s+/g,"_")}`;
-          p.className = "station" + (statuses[s] ? " visited" : "");
-          bDiv.appendChild(p);
+          const el = document.createElement("div");
+          el.textContent = s;
+          el.id = `station-${s.replace(/\s+/g, "_")}`;
+          let cls = "station";
+          if (statuses[s]) cls += " visited";
+          if (treasures.includes(s)) cls += " treasure";
+          el.className = cls;
+          div.appendChild(el);
         });
-        container.appendChild(bDiv);
+        c.appendChild(div);
       }
     }
 
-    // Mark one station visited in the DOM
     function markStationVisited(station) {
-      const el = document.getElementById(`station-${station.replace(/\s+/g,"_")}`);
-      if (el) el.classList.add("visited");
+      document
+        .getElementById(`station-${station.replace(/\s+/g, "_")}`)
+        .classList.add("visited");
+    }
+    function markStationTreasure(station) {
+      document
+        .getElementById(`station-${station.replace(/\s+/g, "_")}`)
+        .classList.add("treasure");
     }
 
-    // Check if all done and show message
     async function checkAllDone(userRef) {
       const snap = await getDoc(userRef);
       if (!snap.exists()) return;
-      const data = snap.data().stationsCompleted || {};
-      const done = Object.values(data).filter(v => v).length;
-      const total = Object.keys(data).length;
+      const done = Object.values(snap.data().stationsCompleted || {}).filter(v => v).length;
+      const total = allStations.length;
       if (done === total) document.getElementById("completionMessage").style.display = "block";
     }
 
-    // On page load: get user, fetch statuses, render
+    // pick random treasures
+    function pickTreasureStations() {
+      const copy = [...allStations];
+      const picked = [];
+      for (let i = 0; i < 5; i++) {
+        const idx = Math.floor(Math.random() * copy.length);
+        picked.push(copy.splice(idx, 1)[0]);
+      }
+      return picked;
+    }
+
+    // on load
     window.addEventListener("DOMContentLoaded", async () => {
       const params = new URLSearchParams(window.location.search);
       const userID = params.get("userID") || localStorage.getItem("huntUserID");
@@ -237,15 +253,24 @@
 
       const userRef = doc(db, "kampungspirit25", userID);
       const snap = await getDoc(userRef);
-      const statuses = snap.exists() ? snap.data().stationsCompleted : {};
-      renderStations(statuses);
+      const data = snap.exists() ? snap.data() : {};
+
+      // if no treasureStations assigned yet, pick and save 5
+      let treasures = data.treasureStations;
+      if (!Array.isArray(treasures) || treasures.length !== 5) {
+        treasures = pickTreasureStations();
+        await updateDoc(userRef, { treasureStations: treasures });
+      }
+
+      // initial render
+      renderStations(data.stationsCompleted || {}, treasures);
       checkAllDone(userRef);
     });
   </script>
 </head>
 
 <body>
-  <h1>Booth Completion Tracker</h1>
+  <h1>Booth & Treasure Tracker</h1>
   <p id="userIDDisplay"><strong>Your ID:</strong> <span></span></p>
   <button onclick="navigator.clipboard.writeText(window.location.href)">
     IMPORTANT: Save Your Link to return your card
