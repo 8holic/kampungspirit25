@@ -2,7 +2,8 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>Booth Completion Tracker</title>
+  <title>Kampung Spirit QR Tracker</title>
+  <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
   <style>
     body {
       font-family: Arial, sans-serif;
@@ -10,112 +11,155 @@
       margin: 2rem auto;
       padding: 1rem;
     }
-
-    h2 {
-      margin-top: 2rem;
-      border-bottom: 1px solid #ccc;
-      padding-bottom: 0.3rem;
+    h1 {
+      text-align: center;
     }
-
-    .booth-group {
-      margin-bottom: 2rem;
+    #userIDDisplay {
+      text-align: center;
+      margin-bottom: 1rem;
     }
-
-    .station-btn {
-      display: block; /* force vertical stack */
-      width: 100%;
-      margin: 0.5rem 0;
-      padding: 0.8rem;
-      border: 1px solid #333;
-      border-radius: 5px;
-      background-color: #f7f7f7;
-      cursor: pointer;
+    #reader {
+      width: 300px;
+      margin: 1rem auto;
+    }
+    .button {
+      display: inline-block;
+      padding: 0.8rem 1.2rem;
       font-size: 1rem;
-      text-align: left;
-      transition: background-color 0.2s;
+      margin: 0.5rem;
+      cursor: pointer;
     }
-
-    .station-btn.visited {
-      background-color: #ddd;
-      color: #555;
-      text-decoration: line-through;
-      pointer-events: none;
+    #status {
+      text-align: center;
+      margin-top: 1rem;
+      font-weight: bold;
+    }
+    #notificationBar {
+      display: none;
+      background: #ffeeba;
+      padding: 1rem;
+      border: 1px solid #f0ad4e;
+      border-radius: 5px;
+      margin-bottom: 1.5rem;
+    }
+    #completionMessage {
+      display: none;
+      background: #d4edda;
+      color: #155724;
+      border: 1px solid #c3e6cb;
+      padding: 1rem;
+      border-radius: 5px;
+      margin-bottom: 1.5rem;
+      text-align: center;
+    }
+    img.event-map {
+      width: 100%;
+      border: 1px solid #ccc;
+      border-radius: 6px;
+      margin: 1.5rem 0;
     }
   </style>
 
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/11.9.1/firebase-app.js";
-    import { getFirestore, doc, getDoc, updateDoc } from "https://www.gstatic.com/firebasejs/11.9.1/firebase-firestore.js";
+    import {
+      getFirestore,
+      doc,
+      getDoc,
+      updateDoc
+    } from "https://www.gstatic.com/firebasejs/11.9.1/firebase-firestore.js";
+    import { onSnapshot } from "https://www.gstatic.com/firebasejs/11.9.1/firebase-firestore.js";
 
+    // Firebase config
     const firebaseConfig = {
       apiKey: "AIzaSyBr1EJyETcCoeGsytiP8miTBTzFPWNVkyU",
       authDomain: "digital-stamp-info-sgbitcraft.firebaseapp.com",
       projectId: "digital-stamp-info-sgbitcraft",
       storageBucket: "digital-stamp-info-sgbitcraft.firebasestorage.app",
       messagingSenderId: "1090982094050",
-      appId: "1:1090982094050:web:63e5e7ec746f8c551f2abb",
+      appId: "1:1090982094050:web:63e5e7ec746c551f2abb",
       measurementId: "G-870QQ95KPG"
     };
 
     const app = initializeApp(firebaseConfig);
     const db = getFirestore(app);
-    //Firebase should have been activated at this point
-    import { onSnapshot } from "https://www.gstatic.com/firebasejs/11.9.1/firebase-firestore.js";
 
-    // Live notification listener
+    // Announcement listener
     const notificationDocRef = doc(db, "announcements", "global");
+    let lastMessage = null;
+    onSnapshot(notificationDocRef, docSnap => {
+      if (!docSnap.exists()) return;
+      const data = docSnap.data();
+      const message = data.message?.trim() || '';
+      if (lastMessage !== null && message !== lastMessage) {
+        window.location.reload();
+      }
+      lastMessage = message;
+      const bar = document.getElementById('notificationBar');
+      const text = document.getElementById('notificationText');
+      if (message) {
+        text.textContent = message;
+        bar.style.display = 'block';
+      } else {
+        bar.style.display = 'none';
+      }
+    });
 
-let lastMessage = null;
+    // QR scanning
+    let html5QrCode;
+    let scanning = false;
 
-onSnapshot(notificationDocRef, (docSnap) => {
-  if (!docSnap.exists()) return;
-
-  const data = docSnap.data();
-  const message = data.message?.trim() || '';
-
-  if (lastMessage !== null && message !== lastMessage) {
-    // Only reload if message changed after first load
-    window.location.reload();
-  }
-
-  lastMessage = message;
-
-  const bar = document.getElementById('notificationBar');
-  const text = document.getElementById('notificationText');
-
-  if (message) {
-    text.textContent = message;
-    bar.style.display = 'block';
-  } else {
-    bar.style.display = 'none';
-  }
-});
-
-
-
-    const groupedStations = {
-      "Blk 698 Booth": [
-        "1 Care Booth",
-        "2 S3 Booth",
-        "3 NEA Booth",
-        "4 RN Zone 5",
-        "5 CCAC Booth",
-        "6 Food Booth 1 Goreng Pisang",
-        "7 Food Booth 2 Roti Prata",
-        "8 Food Booth 3 Tutu Keh"
-      ],
-      "Blk 698B Booth": [
-        "9 Smash the Cans",
-        "10 Ring the Bottle",
-        "11 Rubber Band Gun",
-        "12 Hop-Scotch"
-      ],
-      "Blk 698A Booth": [
-        "13 C2E Booth",
-        "14 Bouncy Castle"
-      ]
+    window.startScan = async function () {
+      if (scanning) return;
+      scanning = true;
+      html5QrCode = new Html5Qrcode("reader");
+      await html5QrCode.start(
+        { facingMode: "environment" },
+        { fps: 10, qrbox: 250 },
+        async decodedText => {
+          try {
+            const url = new URL(decodedText);
+            const station = url.searchParams.get("station");
+            const storedUserID = localStorage.getItem("huntUserID");
+            if (!station || !storedUserID) {
+              alert("Invalid QR code or missing user ID.");
+              return;
+            }
+            const userDocRef = doc(db, "kampungspirit25", storedUserID);
+            const userSnap = await getDoc(userDocRef);
+            if (!userSnap.exists()) {
+              alert("User not found.");
+              return;
+            }
+            await updateDoc(userDocRef, {
+              [`stationsCompleted.${station}`]: true
+            });
+            document.getElementById("status").textContent =
+              `✅ "${station}" marked as completed!`;
+            // reload to update completion status
+            setTimeout(() => window.location.reload(), 1000);
+          } catch (err) {
+            console.error("QR scan error:", err);
+            alert("Failed to process QR code.");
+          } finally {
+            window.stopScan();
+          }
+        },
+        errorMessage => {
+          // ignore
+        }
+      );
     };
 
+    window.stopScan = function () {
+      if (!html5QrCode) return;
+      html5QrCode.stop().then(() => {
+        html5QrCode.clear();
+        scanning = false;
+      });
+    };
+
+    // On load: get userID, show it, check completion
     window.addEventListener('DOMContentLoaded', async () => {
       const params = new URLSearchParams(window.location.search);
       const userID = params.get('userID') || localStorage.getItem('huntUserID');
@@ -124,69 +168,24 @@ onSnapshot(notificationDocRef, (docSnap) => {
         window.location.href = 'index.html';
         return;
       }
-
       localStorage.setItem('huntUserID', userID);
       document.querySelector('#userIDDisplay span').textContent = userID;
 
-      const userDocRef = doc(db, "kampungspirit25", userID);
-      const userSnap = await getDoc(userDocRef);
-      if (!userSnap.exists()) {
-        alert('User data not found.');
-        return;
-      }
-
-      const userData = userSnap.data();
-      const container = document.getElementById('stationsContainer');
-      container.innerHTML = '';
-
-      for (const [groupName, stations] of Object.entries(groupedStations)) {
-        const section = document.createElement('div');
-        section.className = 'booth-group';
-
-        const header = document.createElement('h2');
-        header.textContent = groupName;
-        section.appendChild(header);
-
-        stations.forEach((key) => {
-          const done = !!userData.stationsCompleted?.[key];
-
-          const btn = document.createElement('button');
-          btn.className = 'station-btn';
-          if (done) btn.classList.add('visited');
-          btn.textContent = done ? `${key} ✓` : key;
-
-          btn.addEventListener('click', async () => {
-            if (btn.classList.contains('visited')) return;
-
-            const confirmMark = confirm(`Confirm that "${key}" is completed? This cannot be undone.`);
-            if (!confirmMark) return;
-
-            btn.disabled = true;
-            btn.textContent = 'Saving...';
-
-            try {
-              await updateDoc(userDocRef, {
-                [`stationsCompleted.${key}`]: true
-              });
-              btn.classList.add('visited');
-              btn.textContent = `${key} ✓`;
-            } catch (err) {
-              console.error('Update failed', err);
-              btn.textContent = key;
-              btn.disabled = false;
-            }
-          });
-
-          section.appendChild(btn);
-        });
-
-        container.appendChild(section);
-      }
-            // Completion check
-      const allStations = Object.values(groupedStations).flat();
-      const completedCount = allStations.filter(station => userData.stationsCompleted?.[station]).length;
-      if (completedCount === allStations.length) {
-        document.getElementById('completionMessage').style.display = 'block';
+      // Check completion
+      try {
+        const userDocRef = doc(db, "kampungspirit25", userID);
+        const userSnap = await getDoc(userDocRef);
+        if (userSnap.exists()) {
+          const data = userSnap.data();
+          const completedCount = Object.values(data.stationsCompleted || {})
+            .filter(v => v).length;
+          const totalCount = Object.keys(data.stationsCompleted || {}).length;
+          if (completedCount === totalCount) {
+            document.getElementById('completionMessage').style.display = 'block';
+          }
+        }
+      } catch (e) {
+        console.error('Error checking completion:', e);
       }
     });
   </script>
@@ -195,23 +194,27 @@ onSnapshot(notificationDocRef, (docSnap) => {
 <body>
   <h1>Booth Completion Tracker</h1>
   <p id="userIDDisplay"><strong>Your ID:</strong> <span></span></p>
-  <button onclick="navigator.clipboard.writeText(window.location.href)">IMPORTANT:Save Your Link to return your card</button>
+  <button class="button" onclick="navigator.clipboard.writeText(window.location.href)">
+    IMPORTANT: Save Your Link to return your card
+  </button>
 
-  <!--Map -->
   <div style="margin: 1.5rem 0;">
-    <img src="./images/eventmap.jpeg" alt="Event Map" style="width: 100%; border: 1px solid #ccc; border-radius: 6px;" />
+    <img src="./images/eventmap.jpeg" alt="Event Map" class="event-map" />
   </div>
 
-  <div id="notificationBar" style="display: none; background: #ffeeba; padding: 1rem; border: 1px solid #f0ad4e; border-radius: 5px; margin-bottom: 1.5rem;">
-  <strong>Notice:</strong> <span id="notificationText"></span>
+  <div id="notificationBar">
+    <strong>Notice:</strong> <span id="notificationText"></span>
   </div>
 
-  <div id="completionMessage" style="display: none; background: #d4edda; color: #155724; border: 1px solid #c3e6cb; padding: 1rem; border-radius: 5px; margin-bottom: 1.5rem;">
-  🎉 Congratulations! You've completed all the stations!
+  <div id="completionMessage">
+    🎉 Congratulations! You've completed all the stations!
   </div>
 
-  <div id="stationsContainer">
-    <!-- Populated dynamically -->
+  <div id="reader"></div>
+  <div style="text-align:center;">
+    <button class="button" onclick="startScan()">Start Scanning</button>
+    <button class="button" onclick="stopScan()">Stop Scanning</button>
   </div>
+  <div id="status"></div>
 </body>
 </html>
